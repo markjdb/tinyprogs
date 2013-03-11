@@ -1,6 +1,7 @@
 .include <bsd.own.mk>
 
 SUBDIR=	fetchput	\
+	prettysize	\
 	trimdomain	\
 	waitproc
 
