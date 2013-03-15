@@ -24,6 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+
 #include <err.h>
 #include <errno.h>
 #include <libgen.h>
