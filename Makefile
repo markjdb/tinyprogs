@@ -1,6 +1,7 @@
 .include <bsd.own.mk>
 
-SUBDIR=	fetchput	\
+SUBDIR=	cammatch	\
+	fetchput	\
 	prettysize	\
 	trimdomain	\
 	waitproc
