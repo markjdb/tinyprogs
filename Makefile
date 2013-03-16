@@ -2,6 +2,7 @@
 
 SUBDIR=	cammatch	\
 	fetchput	\
+	madvprotect	\
 	prettysize	\
 	trimdomain	\
 	waitproc
