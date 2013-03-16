@@ -35,8 +35,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define LOGFILE	"madvprotect.out"
-
 static void __dead2
 usage(const char *progname)
 {
