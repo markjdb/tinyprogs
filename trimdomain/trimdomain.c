@@ -33,9 +33,9 @@
 
 #include <libutil.h>
 
-void	usage(const char *);
+static void	usage(const char *);
 
-void
+static void __dead2
 usage(const char *progname)
 {
 
