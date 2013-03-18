@@ -1,4 +1,4 @@
-PROG=madvprotect
+PROG=mprotect
 NO_MAN=yes
 
 BINOWN=${USER}
