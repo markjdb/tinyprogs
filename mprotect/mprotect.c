@@ -35,11 +35,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+const char *progname;
+
 static void __dead2
-usage(const char *progname)
+usage()
 {
 
-	fprintf(stderr, "Usage: %s <program> [<arguments>]\n",
+	fprintf(stderr, "Usage: %s [-l] <program> [<arguments>]\n\n"
+	    "Arguments:\n"
+	    "  -l\t\t-- Wire all memory used by <program>.\n",
 	    basename(progname));
 	exit(1);
 }
@@ -47,15 +51,31 @@ usage(const char *progname)
 int
 main(int argc, char **argv)
 {
+	int ch, lflag = 0;
 
-	if (argc <= 1)
-		usage(argv[0]);
+	progname = argv[0];
 
-	argc--;
-	argv++;
+	while ((ch = getopt(argc, argv, "l")) != -1) {
+		switch (ch) {
+		case 'l':
+			lflag = 1;
+			break;
+		default:
+			usage();
+			break;
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc <= 0)
+		usage();
 
 	if (madvise(NULL, 0, MADV_PROTECT) != 0)
 		err(1, "madvise()");
+	if (lflag && mlockall(MCL_CURRENT | MCL_FUTURE) != 0)
+		err(1, "mlockall()");
 
 	execvp(*argv, argv);
 	err(1, "execvp()");
