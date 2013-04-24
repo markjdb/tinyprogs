@@ -34,8 +34,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *prefixes[] = { "B", "KB", "MB", "GB", "TB" };
-const char *progname;
+static const char *prefixes[] = { "B", "KB", "MB", "GB", "TB" };
+static const char *progname;
 
 void	usage(void);
 
