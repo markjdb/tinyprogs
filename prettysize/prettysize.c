@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static const char *prefixes[] = { "B", "KB", "MB", "GB", "TB" };
 static const char *progname;
@@ -44,37 +45,52 @@ usage()
 {
 
 	fprintf(stderr,
-	    "Usage: %s [-p] mem-size\n\n"
+	    "Usage: %s [-b divisor] mem-size\n"
+	    "       %s [-p] mem-size\n\n"
 	    "Arguments:\n"
+	    "  -b divisor\tTreat mem-size as a multiple of <divisor>, which must be an\n"
+	    "            \tinteger. For example, use -b 1024 for a quantity given in KB.\n"
 	    "  -p\t\tTreat mem-size as a page count (i.e. multiply by 4096).\n",
-	    basename(progname));
+	    basename(progname), basename(progname));
 	exit(1);
 }
 
 int
 main(int argc, char **argv)
 {
-	unsigned long in;
+	unsigned long in, divisor;
 	char *endptr;
 	char buf[32];
-	int i, numprfx;
+	int i, numprfx, opt;
 
 	progname = argv[0];
+	divisor = 1;
 
-	if (argc != 2 && argc != 3)
-		usage();
-
-	in = strtoul(argv[argc - 1], &endptr, 10);
-	if (argv[argc - 1][0] == '\0' || *endptr != '\0')
-		usage();
-
-	if (argc == 3) {
-		if (strcmp(argv[1], "-p") == 0) {
-			in *= 4096;
-		} else {
+	while ((opt = getopt(argc, argv, "b:p")) != -1)
+		switch (opt) {
+		case 'b':
+			divisor = strtoul(optarg, &endptr, 10);
+			if (optarg[0] == '\0' || *endptr != '\0' ||
+			    divisor == 0)
+				usage();
+			break;
+		case 'p':
+			divisor = (1 << 12);
+			break;
+		default:
 			usage();
+			break;
 		}
-	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		usage();
+
+	in = strtoul(argv[0], &endptr, 10);
+	if (argv[0][0] == '\0' || *endptr != '\0')
+		usage();
+	in *= divisor;
 
 	numprfx = sizeof(prefixes) / sizeof(*prefixes);
 	for (i = 0; i < numprfx; i++) {
