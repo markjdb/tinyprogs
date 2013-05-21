@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *progname;
+static const char *progname;
 
 void usage(void);
 
