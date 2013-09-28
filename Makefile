@@ -1,6 +1,7 @@
 .include <bsd.own.mk>
 
 SUBDIR=	cammatch	\
+	dofdump		\
 	fetchput	\
 	mprotect	\
 	prettysize	\
