@@ -3,6 +3,7 @@
 SUBDIR=	cammatch	\
 	dofdump		\
 	fetchput	\
+	id3v2tagstrip	\
 	mprotect	\
 	prettysize	\
 	trimdomain	\
