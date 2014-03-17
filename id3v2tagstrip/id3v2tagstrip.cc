@@ -44,7 +44,7 @@ int
 main(int argc, char **argv)
 {
     std::string argv0(argv[0]);
-    size_t last = argv0.find_last_of("/");
+    auto last = argv0.find_last_of("/");
     progname = argv0.substr(last == std::string::npos ? 0 : last + 1);
 
     if (argc < 3)
