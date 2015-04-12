@@ -116,7 +116,8 @@ main(int argc, char **argv)
 		if ((name = elf_strptr(e, shstrndx, shdr.sh_name)) == NULL)
 			errx(1, "elf_strptr() failed: %s", elf_errmsg(-1));
 
-		if (strcmp(name, ".SUNW_dof") == 0)
+		if (shdr.sh_type == SHT_SUNW_dof &&
+		    strcmp(name, ".SUNW_dof") == 0)
 			break;
 	}
 
