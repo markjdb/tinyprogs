@@ -3,7 +3,7 @@ PROG=id3v2tagstrip
 NO_MAN=
 
 CFLAGS+=-I/usr/local/include -L/usr/local/lib
-LDADD+=-ltag
+LDADD+=-lc++ -ltag
 
 BINOWN=${USER}
 BINGRP=${USER}
