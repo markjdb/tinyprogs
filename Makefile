@@ -7,6 +7,7 @@ SUBDIR=	cammatch	\
 	mprotect	\
 	prettysize	\
 	trimdomain	\
-	waitproc
+	waitproc	\
+	umastats
 
 .include <bsd.subdir.mk>
