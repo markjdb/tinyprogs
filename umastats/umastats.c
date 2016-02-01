@@ -43,6 +43,7 @@ log_stats(void)
 
 	}
 	memstat_mtl_free(mtlp);
+	fflush(stdout);
 }
 
 static void
