@@ -21,7 +21,7 @@ main(int argc, char **argv)
 
 	fd = open("/dev/dri/card0", O_RDWR);
 	if (fd < 0)
-		err(1, "opening(/dev/dri/card0");
+		err(1, "open(/dev/dri/card0)");
 
 	memset(&version, 0, sizeof(version));
 	name[15] = '\0';
