@@ -1,0 +1,9 @@
+I wrote this to look at vm_phys fragmentation caused by nofree zones.
+
+Something like the following gives useful info:
+
+$ ./umaslabs -m "VM OBJECT" | gawk '/^0x/{printf("0x%x\n", rshift(strtonum($1), 21));}' | sort | uniq -c
+
+It relies on the fact that subpage items are accessed via the direct
+map, so we can directly use the mapping address to measure fragmentation
+of the underlying physical memory.

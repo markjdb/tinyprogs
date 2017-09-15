@@ -8,6 +8,7 @@ SUBDIR=	cammatch	\
 	prettysize	\
 	trimdomain	\
 	waitproc	\
+	umaslabs	\
 	umastats
 
 .include <bsd.subdir.mk>
