@@ -108,7 +108,7 @@ static void
 usage(void)
 {
 
-	errx(1, "usage: [-m <zone name>]");
+	errx(1, "usage: -m <zone name>");
 }
 
 int
@@ -132,6 +132,9 @@ main(int argc, char **argv)
 			break;
 		}
 
+	if (match == NULL)
+		usage();
+
 	kvm = kvm_openfiles(NULL, NULL, NULL, 0, errbuf);
 	if (kvm == NULL)
 		errx(1, "kvm_openfiles: %s", errbuf);
@@ -152,8 +155,6 @@ main(int argc, char **argv)
 		if (ret != 0)
 			errx(1, "kread: %s", kvm_geterr(kvm));
 
-		if (match == NULL)
-			printf("keg zones: ");
 		for (zonep = LIST_FIRST(&keg.uk_zones); zonep != NULL;
 		    zonep = LIST_NEXT(&zone, uz_link)) {
 			ret = kread(kvm, zonep, &zone, sizeof(zone));
@@ -163,22 +164,16 @@ main(int argc, char **argv)
 			    sizeof(name));
 			if (ret != 0)
 				errx(1, "kread_string: %s", kvm_geterr(kvm));
-			if (match == NULL)
-				printf("%s ", name);
-			else if (strcmp(match, name) == 0)
+			if (strcmp(match, name) == 0)
 				break;
 		}
-		if (match == NULL)
-			printf("\n");
-		else if (zonep == NULL)
+		if (zonep == NULL)
 			continue;
 
-		if ((keg.uk_flags & UMA_ZONE_VTOSLAB) == 0) {
-			printf("partially used slabs:\n");
+		if ((keg.uk_flags & UMA_ZONE_VTOSLAB) == 0 &&
+		    keg.uk_ppera == 1) {
 			dump_slabs(kvm, (struct slablist *)&keg.uk_part_slab);
-			printf("unused slabs:\n");
 			dump_slabs(kvm, (struct slablist *)&keg.uk_free_slab);
-			printf("fully used slabs:\n");
 			dump_slabs(kvm, (struct slablist *)&keg.uk_full_slab);
 		}
 	}
