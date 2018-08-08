@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017 Mark Johnston <markj@FreeBSD.org>
+ * Copyright (c) 2017-2018 Mark Johnston <markj@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,12 +24,16 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/sysctl.h>
+
 #include <vm/uma.h>
 #include <vm/uma_int.h>
 
 #include <err.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -116,10 +120,11 @@ main(int argc, char **argv)
 {
 	char errbuf[_POSIX2_LINE_MAX], name[128], *match;
 	LIST_HEAD(, uma_keg) uma_kegs;
-	struct uma_keg keg, *kegp;
+	struct uma_keg *keg, *kegkp;
 	struct uma_zone zone, *zonep;
 	kvm_t *kvm;
-	int ch, count, ret;
+	size_t ksize, sz;
+	int ch, count, i, ndomains, ret;
 
 	match = NULL;
 	while ((ch = getopt(argc, argv, "m:")) != -1)
@@ -135,6 +140,10 @@ main(int argc, char **argv)
 	if (match == NULL)
 		usage();
 
+	sz = sizeof(ndomains);
+	if (sysctlbyname("vm.ndomains", &ndomains, &sz, NULL, 0) != 0)
+		err(1, "sysctl(vm.ndomains)");
+
 	kvm = kvm_openfiles(NULL, NULL, NULL, 0, errbuf);
 	if (kvm == NULL)
 		errx(1, "kvm_openfiles: %s", errbuf);
@@ -149,13 +158,18 @@ main(int argc, char **argv)
 	if (ret != 0)
 		errx(1, "kread_symbol: %s", kvm_geterr(kvm));
 
-	for (kegp = LIST_FIRST(&uma_kegs); kegp != NULL;
-	    kegp = LIST_NEXT(&keg, uk_link)) {
-		ret = kread(kvm, kegp, &keg, sizeof(keg));
+	ksize = sizeof(*keg) + ndomains * sizeof(keg->uk_domain[0]);
+	keg = malloc(ksize);
+	if (keg == NULL)
+		err(1, "malloc");
+
+	for (kegkp = LIST_FIRST(&uma_kegs); kegkp != NULL;
+	    kegkp = LIST_NEXT(keg, uk_link)) {
+		ret = kread(kvm, kegkp, keg, ksize);
 		if (ret != 0)
 			errx(1, "kread: %s", kvm_geterr(kvm));
 
-		for (zonep = LIST_FIRST(&keg.uk_zones); zonep != NULL;
+		for (zonep = LIST_FIRST(&keg->uk_zones); zonep != NULL;
 		    zonep = LIST_NEXT(&zone, uz_link)) {
 			ret = kread(kvm, zonep, &zone, sizeof(zone));
 			if (ret != 0)
@@ -170,15 +184,19 @@ main(int argc, char **argv)
 		if (zonep == NULL)
 			continue;
 
-		if ((keg.uk_flags & UMA_ZONE_VTOSLAB) == 0 &&
-		    keg.uk_ppera == 1) {
-			dump_slabs(kvm, (struct slablist *)&keg.uk_part_slab);
-			dump_slabs(kvm, (struct slablist *)&keg.uk_free_slab);
-			dump_slabs(kvm, (struct slablist *)&keg.uk_full_slab);
+		if ((keg->uk_flags & UMA_ZONE_VTOSLAB) == 0 &&
+		    keg->uk_ppera == 1) {
+			for (i = 0; i < ndomains; i++)
+				dump_slabs(kvm, (struct slablist *)&keg->uk_domain[i].ud_part_slab);
+			for (i = 0; i < ndomains; i++)
+				dump_slabs(kvm, (struct slablist *)&keg->uk_domain[i].ud_free_slab);
+			for (i = 0; i < ndomains; i++)
+				dump_slabs(kvm, (struct slablist *)&keg->uk_domain[i].ud_full_slab);
 		}
 	}
 
 	(void)kvm_close(kvm);
+	free(keg);
 
 	return (0);
 }
