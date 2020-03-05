@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2017-2018 Mark Johnston <markj@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2017-2018, 2020 Mark Johnston <markj@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,9 +23,13 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
 
+#include <vm/vm.h>
+#include <vm/vm_param.h>
+#include <vm/vm_object.h>
+#include <vm/vm_page.h>
 #include <vm/uma.h>
 #include <vm/uma_int.h>
 
@@ -42,6 +45,10 @@
 static struct nlist namelist[] = {
 #define	X_UMA_KEGS	0
 	{ .n_name = "_uma_kegs" },
+#define	X_VM_PAGE_ARRAY 1
+	{ .n_name = "_vm_page_array" },
+#define X_VM_PAGE_ARRAY_SIZE 2
+	{ .n_name = "_vm_page_array_size" },
 	{ .n_name = "" },
 };
 
@@ -91,10 +98,8 @@ kread_symbol(kvm_t *kvm, int index, void *addr, size_t size)
 	return (0);
 }
 
-LIST_HEAD(slablist, uma_slab);
-
 static void
-dump_slabs(kvm_t *kvm, struct slablist *list)
+dump_slabs(kvm_t *kvm, int ppera, struct slabhead *list)
 {
 	struct uma_slab slab, *slabp;
 	int ret;
@@ -104,7 +109,8 @@ dump_slabs(kvm_t *kvm, struct slablist *list)
 		ret = kread(kvm, slabp, &slab, sizeof(slab));
 		if (ret != 0)
 			errx(1, "kread: %s", kvm_geterr(kvm));
-		printf("%p\n", slab.us_data);
+		printf("%#lx\n",
+		    roundup2((uintptr_t)slabp, PAGE_SIZE) - ppera * PAGE_SIZE);
 	}
 }
 
@@ -124,7 +130,7 @@ main(int argc, char **argv)
 	struct uma_zone zone, *zonep;
 	kvm_t *kvm;
 	size_t ksize, sz;
-	int ch, count, i, ndomains, ret;
+	int ch, count, i, ndomains, ppera, ret;
 
 	match = NULL;
 	while ((ch = getopt(argc, argv, "m:")) != -1)
@@ -184,14 +190,40 @@ main(int argc, char **argv)
 		if (zonep == NULL)
 			continue;
 
-		if ((keg->uk_flags & UMA_ZONE_VTOSLAB) == 0 &&
-		    keg->uk_ppera == 1) {
+		if ((keg->uk_flags & UMA_ZFLAG_VTOSLAB) != 0) {
+			long size;
+			ret = kread_symbol(kvm, X_VM_PAGE_ARRAY_SIZE, &size,
+			    sizeof(size));
+			if (ret != 0)
+				errx(1, "kread_symbol: %s", kvm_geterr(kvm));
+			vm_page_t a;
+			ret = kread_symbol(kvm, X_VM_PAGE_ARRAY, &a, sizeof(a));
+			if (ret != 0)
+				errx(1, "kread_symbol: %s", kvm_geterr(kvm));
+			vm_page_t arr = malloc(size * sizeof(struct vm_page));
+			if (arr == NULL)
+				err(1, "malloc");
+			ret = kread(kvm, a, arr, size * sizeof(struct vm_page));
+			if (ret != 0)
+				errx(1, "kread: %s", kvm_geterr(kvm));
+
+			printf("size is %ld\n", size);
+			for (long j = 0; j < size; j++) {
+				if (VPRC_WIRE_COUNT(arr[j].ref_count) == 1 &&
+				    arr[j].plinks.uma.zone == zonep)
+					printf("%#lx\n", arr[j].phys_addr);
+			}
+		} else if ((keg->uk_flags & UMA_ZFLAG_OFFPAGE) == 0) {
+			ppera = keg->uk_ppera;
 			for (i = 0; i < ndomains; i++)
-				dump_slabs(kvm, (struct slablist *)&keg->uk_domain[i].ud_part_slab);
+				dump_slabs(kvm, ppera,
+				    &keg->uk_domain[i].ud_part_slab);
 			for (i = 0; i < ndomains; i++)
-				dump_slabs(kvm, (struct slablist *)&keg->uk_domain[i].ud_free_slab);
+				dump_slabs(kvm, ppera,
+				    &keg->uk_domain[i].ud_free_slab);
 			for (i = 0; i < ndomains; i++)
-				dump_slabs(kvm, (struct slablist *)&keg->uk_domain[i].ud_full_slab);
+				dump_slabs(kvm, ppera,
+				    &keg->uk_domain[i].ud_full_slab);
 		}
 	}
 
